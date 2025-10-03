@@ -1,0 +1,27 @@
+{
+  "tests": [
+    {
+      "name": "Proxy with valid URL",
+      "method": "GET",
+      "path": "/?url=https://example.com",
+      "expectedStatus": 200,
+      "expectedBody": "text/html"
+    },
+    {
+      "name": "Proxy without URL",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 400,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "OPTIONS request",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    }
+  ]
+}

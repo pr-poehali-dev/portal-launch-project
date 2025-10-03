@@ -196,20 +196,7 @@ const SettingsDialog = ({
               />
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Открывать ссылки в новой вкладке</Label>
-                <p className="text-sm text-muted-foreground">
-                  Автоматически открывать результаты в новом окне
-                </p>
-              </div>
-              <Switch
-                checked={localSettings.openInNewTab}
-                onCheckedChange={(checked) =>
-                  setLocalSettings({ ...localSettings, openInNewTab: checked })
-                }
-              />
-            </div>
+
           </TabsContent>
 
           <TabsContent value="appearance" className="space-y-4 pt-4">
