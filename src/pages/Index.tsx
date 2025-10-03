@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
 import SettingsDialog, { UserSettings } from '@/components/SettingsDialog';
 import { useToast } from '@/hooks/use-toast';
@@ -21,6 +22,10 @@ const Index = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const [settings, setSettings] = useState<UserSettings>({
@@ -42,6 +47,11 @@ const Index = () => {
     const saved = localStorage.getItem('userSettings');
     if (saved) {
       setSettings(JSON.parse(saved));
+    }
+    
+    const history = localStorage.getItem('searchHistory');
+    if (history) {
+      setSearchHistory(JSON.parse(history));
     }
   }, []);
 
@@ -66,6 +76,13 @@ const Index = () => {
     }
 
     setIsSearching(true);
+    setShowSuggestions(false);
+    
+    if (settings.showHistory && !searchHistory.includes(searchQuery)) {
+      const newHistory = [searchQuery, ...searchHistory].slice(0, 10);
+      setSearchHistory(newHistory);
+      localStorage.setItem('searchHistory', JSON.stringify(newHistory));
+    }
     
     try {
       const response = await fetch(
@@ -92,6 +109,33 @@ const Index = () => {
     } finally {
       setIsSearching(false);
     }
+  };
+
+  const handleSearchInputChange = (value: string) => {
+    setSearchQuery(value);
+    
+    if (settings.autoComplete && value.length > 1) {
+      const filtered = searchHistory.filter(item => 
+        item.toLowerCase().includes(value.toLowerCase())
+      );
+      setSuggestions(filtered.slice(0, 5));
+      setShowSuggestions(filtered.length > 0);
+    } else {
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    setSearchQuery(suggestion);
+    setShowSuggestions(false);
+    searchInputRef.current?.focus();
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    setSearchResults([]);
+    setShowSuggestions(false);
+    searchInputRef.current?.focus();
   };
 
   const handleBrowse = (url: string) => {
@@ -179,30 +223,96 @@ const Index = () => {
 
           <TabsContent value="search" className="animate-fade-in">
             <Card className="p-6 mb-8 shadow-lg border-primary/20">
-              <form onSubmit={handleSearch} className="flex gap-3">
-                <div className="relative flex-1">
-                  <Icon
-                    name="Search"
-                    size={20}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                  />
-                  <Input
-                    type="text"
-                    placeholder="Введите запрос для поиска..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 h-12 text-base"
-                  />
+              <form onSubmit={handleSearch} className="space-y-4">
+                <div className="flex gap-3">
+                  <div className="relative flex-1">
+                    <Icon
+                      name="Search"
+                      size={20}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground z-10"
+                    />
+                    <Input
+                      ref={searchInputRef}
+                      type="text"
+                      placeholder="Введите запрос для поиска..."
+                      value={searchQuery}
+                      onChange={(e) => handleSearchInputChange(e.target.value)}
+                      onFocus={() => settings.autoComplete && searchQuery.length > 1 && setShowSuggestions(suggestions.length > 0)}
+                      onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                      className="pl-10 pr-10 h-12 text-base"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={clearSearch}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <Icon name="X" size={18} />
+                      </button>
+                    )}
+                    
+                    {showSuggestions && suggestions.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-card border rounded-lg shadow-xl z-50 overflow-hidden">
+                        <div className="p-2">
+                          <p className="text-xs text-muted-foreground px-3 py-1 flex items-center gap-2">
+                            <Icon name="History" size={14} />
+                            История поиска
+                          </p>
+                          {suggestions.map((suggestion, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => handleSuggestionClick(suggestion)}
+                              className="w-full text-left px-3 py-2 hover:bg-accent rounded-md transition-colors flex items-center gap-2 group"
+                            >
+                              <Icon name="Clock" size={16} className="text-muted-foreground" />
+                              <span className="flex-1">{suggestion}</span>
+                              <Icon name="ArrowUpLeft" size={14} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <Button 
+                    type="submit" 
+                    size="lg" 
+                    className="px-8"
+                    disabled={isSearching}
+                    style={{ backgroundColor: settings.accentColor }}
+                  >
+                    {isSearching ? (
+                      <>
+                        <Icon name="Loader2" size={20} className="animate-spin mr-2" />
+                        Поиск...
+                      </>
+                    ) : (
+                      'Найти'
+                    )}
+                  </Button>
                 </div>
-                <Button 
-                  type="submit" 
-                  size="lg" 
-                  className="px-8"
-                  disabled={isSearching}
-                  style={{ backgroundColor: settings.accentColor }}
-                >
-                  {isSearching ? 'Поиск...' : 'Найти'}
-                </Button>
+                
+                {searchHistory.length > 0 && settings.showHistory && !searchQuery && (
+                  <div className="flex gap-2 flex-wrap items-center">
+                    <span className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Icon name="Clock" size={14} />
+                      Недавние:
+                    </span>
+                    {searchHistory.slice(0, 5).map((item, idx) => (
+                      <Badge
+                        key={idx}
+                        variant="secondary"
+                        className="cursor-pointer hover:bg-primary/20 transition-colors"
+                        onClick={() => {
+                          setSearchQuery(item);
+                          searchInputRef.current?.focus();
+                        }}
+                      >
+                        {item}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </form>
             </Card>
 
