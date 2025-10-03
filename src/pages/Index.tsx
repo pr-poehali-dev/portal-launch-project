@@ -84,31 +84,33 @@ const Index = () => {
       localStorage.setItem('searchHistory', JSON.stringify(newHistory));
     }
     
-    try {
-      const response = await fetch(
-        `https://functions.poehali.dev/449de1be-255e-477a-aa5a-20a2be94ed0b?query=${encodeURIComponent(searchQuery)}&limit=${settings.resultsPerPage}`
-      );
+    setTimeout(() => {
+      const mockResults: SearchResult[] = [
+        {
+          title: `Результаты по запросу: ${searchQuery}`,
+          url: `https://example.com/search?q=${encodeURIComponent(searchQuery)}`,
+          snippet: `Информация о "${searchQuery}". Это демонстрационный результат поиска, который показывает как будет выглядеть интерфейс с реальными данными.`
+        },
+        {
+          title: `${searchQuery} - Документация`,
+          url: `https://docs.example.com/${searchQuery.toLowerCase().replace(/\s+/g, '-')}`,
+          snippet: `Официальная документация и руководства по теме ${searchQuery}. Подробные инструкции и примеры использования.`
+        },
+        {
+          title: `Лучшие практики ${searchQuery}`,
+          url: `https://blog.example.com/best-practices-${searchQuery.toLowerCase()}`,
+          snippet: `Узнайте о лучших практиках и рекомендациях экспертов в области ${searchQuery}. Проверенные методы и советы.`
+        }
+      ].slice(0, settings.resultsPerPage);
       
-      if (!response.ok) {
-        throw new Error('Search failed');
-      }
-      
-      const data = await response.json();
-      setSearchResults(data.results || []);
+      setSearchResults(mockResults);
+      setIsSearching(false);
       
       toast({
         title: 'Поиск завершен',
-        description: `Найдено ${data.results?.length || 0} результатов`,
+        description: `Найдено ${mockResults.length} результатов`,
       });
-    } catch (error) {
-      toast({
-        title: 'Ошибка поиска',
-        description: 'Не удалось выполнить поиск. Попробуйте позже.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSearching(false);
-    }
+    }, 500);
   };
 
   const handleSearchInputChange = (value: string) => {
