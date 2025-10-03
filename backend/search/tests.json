@@ -1,0 +1,31 @@
+{
+  "tests": [
+    {
+      "name": "Search with query parameter",
+      "method": "GET",
+      "path": "/?query=typescript",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "results": "array",
+        "query": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Search without query",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 400,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "OPTIONS request",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    }
+  ]
+}

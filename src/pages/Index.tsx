@@ -1,38 +1,93 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import Icon from '@/components/ui/icon';
+import SettingsDialog, { UserSettings } from '@/components/SettingsDialog';
+import { useToast } from '@/hooks/use-toast';
+
+interface SearchResult {
+  title: string;
+  url: string;
+  snippet: string;
+}
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [browserUrl, setBrowserUrl] = useState('');
   const [activeTab, setActiveTab] = useState('search');
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const { toast } = useToast();
 
-  const mockSearchResults = [
-    {
-      id: 1,
-      title: 'Advanced Web Technologies Documentation',
-      url: 'https://example.com/web-tech',
-      snippet: 'Comprehensive guide to modern web development technologies including React, TypeScript, and cloud infrastructure...',
-    },
-    {
-      id: 2,
-      title: 'Technical Portal Development Best Practices',
-      url: 'https://example.com/dev-practices',
-      snippet: 'Learn how to build scalable and performant technical portals with industry-standard practices...',
-    },
-    {
-      id: 3,
-      title: 'Search Engine Optimization for Tech Sites',
-      url: 'https://example.com/seo-tech',
-      snippet: 'Essential SEO strategies for technical documentation and developer portals to improve discoverability...',
-    },
-  ];
+  const [settings, setSettings] = useState<UserSettings>({
+    theme: 'light',
+    searchEngine: 'duckduckgo',
+    resultsPerPage: 10,
+    safeSearch: true,
+    autoComplete: true,
+    username: 'Пользователь',
+    backgroundColor: '#F8FAFC',
+    accentColor: '#2563EB',
+  });
 
-  const handleSearch = (e: React.FormEvent) => {
+  useEffect(() => {
+    const saved = localStorage.getItem('userSettings');
+    if (saved) {
+      setSettings(JSON.parse(saved));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (settings.theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [settings.theme]);
+
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!searchQuery.trim()) {
+      toast({
+        title: 'Введите запрос',
+        description: 'Пожалуйста, введите что-нибудь для поиска',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSearching(true);
+    
+    try {
+      const response = await fetch(
+        `https://functions.poehali.dev/449de1be-255e-477a-aa5a-20a2be94ed0b?query=${encodeURIComponent(searchQuery)}&limit=${settings.resultsPerPage}`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Search failed');
+      }
+      
+      const data = await response.json();
+      setSearchResults(data.results || []);
+      
+      toast({
+        title: 'Поиск завершен',
+        description: `Найдено ${data.results?.length || 0} результатов`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Ошибка поиска',
+        description: 'Не удалось выполнить поиск. Попробуйте позже.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   const handleBrowse = (url: string) => {
@@ -40,11 +95,56 @@ const Index = () => {
     setActiveTab('browser');
   };
 
+  const getUserInitials = () => {
+    return settings.username
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
+    <div 
+      className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20 transition-colors duration-300"
+      style={{ 
+        backgroundColor: settings.backgroundColor,
+      }}
+    >
       <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="flex justify-between items-center mb-8">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-12 w-12">
+              <AvatarFallback 
+                className="text-white font-semibold"
+                style={{ backgroundColor: settings.accentColor }}
+              >
+                {getUserInitials()}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="text-sm text-muted-foreground">Добро пожаловать,</p>
+              <p className="font-semibold">{settings.username}</p>
+            </div>
+          </div>
+          
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setSettingsOpen(true)}
+            className="hover:rotate-90 transition-transform duration-300"
+          >
+            <Icon name="Settings" size={20} />
+          </Button>
+        </div>
+
         <div className="mb-12 text-center animate-fade-in">
-          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+          <h1 
+            className="text-5xl font-bold mb-4 bg-gradient-to-r bg-clip-text text-transparent"
+            style={{ 
+              backgroundImage: `linear-gradient(to right, ${settings.accentColor}, ${settings.accentColor}99)`
+            }}
+          >
             Tech Portal
           </h1>
           <p className="text-muted-foreground text-lg">
@@ -81,26 +181,37 @@ const Index = () => {
                     className="pl-10 h-12 text-base"
                   />
                 </div>
-                <Button type="submit" size="lg" className="px-8">
-                  Найти
+                <Button 
+                  type="submit" 
+                  size="lg" 
+                  className="px-8"
+                  disabled={isSearching}
+                  style={{ backgroundColor: settings.accentColor }}
+                >
+                  {isSearching ? 'Поиск...' : 'Найти'}
                 </Button>
               </form>
             </Card>
 
             <div className="space-y-4">
-              <h2 className="text-2xl font-semibold mb-6 flex items-center gap-2">
-                <Icon name="FileText" size={24} />
-                Результаты поиска
-              </h2>
-              {mockSearchResults.map((result, index) => (
+              {searchResults.length > 0 && (
+                <h2 className="text-2xl font-semibold mb-6 flex items-center gap-2">
+                  <Icon name="FileText" size={24} />
+                  Результаты поиска ({searchResults.length})
+                </h2>
+              )}
+              {searchResults.map((result, index) => (
                 <Card
-                  key={result.id}
+                  key={index}
                   className="p-6 hover:shadow-xl transition-all duration-300 hover:border-primary/40 cursor-pointer group animate-fade-in"
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
-                      <h3 className="text-xl font-semibold text-primary mb-2 group-hover:underline">
+                      <h3 
+                        className="text-xl font-semibold mb-2 group-hover:underline"
+                        style={{ color: settings.accentColor }}
+                      >
                         {result.title}
                       </h3>
                       <p className="text-sm text-muted-foreground mb-3 line-clamp-1">
@@ -121,6 +232,18 @@ const Index = () => {
                   </div>
                 </Card>
               ))}
+              
+              {searchResults.length === 0 && !isSearching && (
+                <div className="text-center py-12">
+                  <div className="w-20 h-20 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
+                    <Icon name="Search" size={40} style={{ color: settings.accentColor }} />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">Начните поиск</h3>
+                  <p className="text-muted-foreground">
+                    Введите запрос выше, чтобы найти информацию
+                  </p>
+                </div>
+              )}
             </div>
           </TabsContent>
 
@@ -148,7 +271,11 @@ const Index = () => {
                     className="pl-10 h-12 text-base"
                   />
                 </div>
-                <Button size="lg" className="px-8">
+                <Button 
+                  size="lg" 
+                  className="px-8"
+                  style={{ backgroundColor: settings.accentColor }}
+                >
                   <Icon name="ArrowRight" size={20} />
                 </Button>
               </div>
@@ -156,8 +283,11 @@ const Index = () => {
 
             <Card className="p-8 min-h-[600px] shadow-lg flex items-center justify-center bg-gradient-to-br from-muted/30 to-muted/10">
               <div className="text-center space-y-4">
-                <div className="w-20 h-20 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-                  <Icon name="Globe" size={40} className="text-primary" />
+                <div 
+                  className="w-20 h-20 mx-auto rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: `${settings.accentColor}15` }}
+                >
+                  <Icon name="Globe" size={40} style={{ color: settings.accentColor }} />
                 </div>
                 <h3 className="text-2xl font-semibold">Встроенный браузер</h3>
                 <p className="text-muted-foreground max-w-md">
@@ -172,8 +302,11 @@ const Index = () => {
 
         <div className="mt-16 grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card className="p-6 text-center hover:shadow-lg transition-shadow duration-300">
-            <div className="w-12 h-12 mx-auto mb-4 bg-primary/10 rounded-lg flex items-center justify-center">
-              <Icon name="Search" size={24} className="text-primary" />
+            <div 
+              className="w-12 h-12 mx-auto mb-4 rounded-lg flex items-center justify-center"
+              style={{ backgroundColor: `${settings.accentColor}15` }}
+            >
+              <Icon name="Search" size={24} style={{ color: settings.accentColor }} />
             </div>
             <h4 className="font-semibold mb-2">Мощный поиск</h4>
             <p className="text-sm text-muted-foreground">
@@ -182,8 +315,11 @@ const Index = () => {
           </Card>
 
           <Card className="p-6 text-center hover:shadow-lg transition-shadow duration-300">
-            <div className="w-12 h-12 mx-auto mb-4 bg-primary/10 rounded-lg flex items-center justify-center">
-              <Icon name="Globe" size={24} className="text-primary" />
+            <div 
+              className="w-12 h-12 mx-auto mb-4 rounded-lg flex items-center justify-center"
+              style={{ backgroundColor: `${settings.accentColor}15` }}
+            >
+              <Icon name="Globe" size={24} style={{ color: settings.accentColor }} />
             </div>
             <h4 className="font-semibold mb-2">Встроенный браузер</h4>
             <p className="text-sm text-muted-foreground">
@@ -192,8 +328,11 @@ const Index = () => {
           </Card>
 
           <Card className="p-6 text-center hover:shadow-lg transition-shadow duration-300">
-            <div className="w-12 h-12 mx-auto mb-4 bg-primary/10 rounded-lg flex items-center justify-center">
-              <Icon name="BarChart" size={24} className="text-primary" />
+            <div 
+              className="w-12 h-12 mx-auto mb-4 rounded-lg flex items-center justify-center"
+              style={{ backgroundColor: `${settings.accentColor}15` }}
+            >
+              <Icon name="BarChart" size={24} style={{ color: settings.accentColor }} />
             </div>
             <h4 className="font-semibold mb-2">Аналитика</h4>
             <p className="text-sm text-muted-foreground">
@@ -201,9 +340,15 @@ const Index = () => {
             </p>
           </Card>
 
-          <Card className="p-6 text-center hover:shadow-lg transition-shadow duration-300">
-            <div className="w-12 h-12 mx-auto mb-4 bg-primary/10 rounded-lg flex items-center justify-center">
-              <Icon name="Settings" size={24} className="text-primary" />
+          <Card 
+            className="p-6 text-center hover:shadow-lg transition-shadow duration-300 cursor-pointer"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <div 
+              className="w-12 h-12 mx-auto mb-4 rounded-lg flex items-center justify-center"
+              style={{ backgroundColor: `${settings.accentColor}15` }}
+            >
+              <Icon name="Settings" size={24} style={{ color: settings.accentColor }} />
             </div>
             <h4 className="font-semibold mb-2">Настройки</h4>
             <p className="text-sm text-muted-foreground">
@@ -212,6 +357,13 @@ const Index = () => {
           </Card>
         </div>
       </div>
+
+      <SettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        settings={settings}
+        onSettingsChange={setSettings}
+      />
     </div>
   );
 };
