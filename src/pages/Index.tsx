@@ -32,6 +32,10 @@ const Index = () => {
     username: 'Пользователь',
     backgroundColor: '#F8FAFC',
     accentColor: '#2563EB',
+    openInNewTab: true,
+    showHistory: true,
+    compactView: false,
+    language: 'ru',
   });
 
   useEffect(() => {
@@ -92,7 +96,11 @@ const Index = () => {
 
   const handleBrowse = (url: string) => {
     if (url) {
-      window.open(url, '_blank', 'noopener,noreferrer');
+      if (settings.openInNewTab) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      } else {
+        window.location.href = url;
+      }
     }
   };
 
@@ -118,8 +126,8 @@ const Index = () => {
         backgroundColor: settings.backgroundColor,
       }}
     >
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="flex justify-between items-center mb-8">
+      <div className={`container mx-auto max-w-7xl transition-all ${settings.compactView ? 'px-2 py-4' : 'px-4 py-8'}`}>
+        <div className={`flex justify-between items-center ${settings.compactView ? 'mb-4' : 'mb-8'}`}>
           <div className="flex items-center gap-3">
             <Avatar className="h-12 w-12">
               <AvatarFallback 
@@ -145,16 +153,16 @@ const Index = () => {
           </Button>
         </div>
 
-        <div className="mb-12 text-center animate-fade-in">
+        <div className={`text-center animate-fade-in ${settings.compactView ? 'mb-6' : 'mb-12'}`}>
           <h1 
-            className="text-5xl font-bold mb-4 bg-gradient-to-r bg-clip-text text-transparent"
+            className={`font-bold bg-gradient-to-r bg-clip-text text-transparent ${settings.compactView ? 'text-3xl mb-2' : 'text-5xl mb-4'}`}
             style={{ 
               backgroundImage: `linear-gradient(to right, ${settings.accentColor}, ${settings.accentColor}99)`
             }}
           >
             Tech Portal
           </h1>
-          <p className="text-muted-foreground text-lg">
+          <p className={`text-muted-foreground ${settings.compactView ? 'text-sm' : 'text-lg'}`}>
             Поиск и просмотр информации в одном месте
           </p>
         </div>
