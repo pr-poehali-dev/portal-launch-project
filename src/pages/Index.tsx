@@ -91,8 +91,15 @@ const Index = () => {
   };
 
   const handleBrowse = (url: string) => {
-    setBrowserUrl(url);
-    setActiveTab('browser');
+    if (url) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const handleGoToBrowser = () => {
+    if (browserUrl) {
+      window.open(browserUrl, '_blank', 'noopener,noreferrer');
+    }
   };
 
   const getUserInitials = () => {
@@ -274,27 +281,48 @@ const Index = () => {
                 <Button 
                   size="lg" 
                   className="px-8"
+                  onClick={handleGoToBrowser}
                   style={{ backgroundColor: settings.accentColor }}
                 >
-                  <Icon name="ArrowRight" size={20} />
+                  Открыть
                 </Button>
               </div>
             </Card>
 
             <Card className="p-8 min-h-[600px] shadow-lg flex items-center justify-center bg-gradient-to-br from-muted/30 to-muted/10">
-              <div className="text-center space-y-4">
+              <div className="text-center space-y-6">
                 <div 
                   className="w-20 h-20 mx-auto rounded-full flex items-center justify-center"
                   style={{ backgroundColor: `${settings.accentColor}15` }}
                 >
-                  <Icon name="Globe" size={40} style={{ color: settings.accentColor }} />
+                  <Icon name="ExternalLink" size={40} style={{ color: settings.accentColor }} />
                 </div>
-                <h3 className="text-2xl font-semibold">Встроенный браузер</h3>
-                <p className="text-muted-foreground max-w-md">
-                  {browserUrl
-                    ? `Загрузка: ${browserUrl}`
-                    : 'Введите URL адрес для просмотра веб-страницы или выберите результат из поиска'}
-                </p>
+                <div>
+                  <h3 className="text-2xl font-semibold mb-2">Быстрый переход</h3>
+                  <p className="text-muted-foreground max-w-md">
+                    Введите URL адрес и нажмите "Открыть" - сайт откроется в новой вкладке
+                  </p>
+                </div>
+                <div className="flex gap-2 justify-center flex-wrap">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => window.open('https://google.com', '_blank')}
+                  >
+                    Google
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => window.open('https://github.com', '_blank')}
+                  >
+                    GitHub
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => window.open('https://stackoverflow.com', '_blank')}
+                  >
+                    Stack Overflow
+                  </Button>
+                </div>
               </div>
             </Card>
           </TabsContent>
